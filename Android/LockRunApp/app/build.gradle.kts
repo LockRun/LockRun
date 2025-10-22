@@ -17,6 +17,10 @@ android {
 dependencies {
 
     implementation(project(":features:home"))
+    implementation(project(":libraries:storage-contract"))
+    implementation(project(":libraries:storage"))
+    implementation(project(":libraries:network-contract"))
+    implementation(project(":libraries:network"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
