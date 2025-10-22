@@ -38,14 +38,22 @@ fun PrimaryButton(
             .background(
                 brush = Brush.sweepGradient(
                     colors = listOf(
+                        Color(0xFFC5D8F1),
                         Color(0xFFD8F3EC),
                         Color(0xFFE8F4EA),
+                        Color(0xFFE8F4EA),
+                        Color(0xFFCDE4FB),
                         Color(0xFFCDE4FB),
                         Color(0xFFC5CBF8),
+                        Color(0xFFC5CBF8),
+                        Color(0xFFC9E7F4),
                         Color(0xFFC9E7F4),
                         Color(0xFFEBEDEC),
+                        Color(0xFFEBEDEC),
                         Color(0xFFC5D7F9),
-                        Color(0xFFB9C7F5)
+                        Color(0xFFC5D7F9),
+                        Color(0xFFB9C7F5),
+                        Color(0xFFC5D8F1),
                     )
                 )
             )
