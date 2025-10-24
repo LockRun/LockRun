@@ -1,4 +1,4 @@
-package com.tteoli.lockrunapp
+package com.tteoli.lockrun
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
