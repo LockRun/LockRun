@@ -7,6 +7,7 @@ pluginManagement {
                 includeGroupByRegex("androidx.*")
             }
         }
+        includeBuild("build-logic")
         mavenCentral()
         gradlePluginPortal()
     }
@@ -21,3 +22,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "LockRunApp"
 include(":app")
+include(":core")
+include(":features:home")
