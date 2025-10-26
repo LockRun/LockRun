@@ -12,7 +12,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.Fragment
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.tteoli.home.presentation.screen.HomeScreen
 import com.tteoli.home.ui.theme.LockRunAppTheme
 
 class HomeFragment: Fragment() {
@@ -24,12 +34,8 @@ class HomeFragment: Fragment() {
         return ComposeView(requireContext()).apply {
             setContent {
                 LockRunAppTheme {
-                    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                        Greeting(
-                            name = "home",
-                            modifier = Modifier.padding(innerPadding)
-                        )
-                    }
+
+                    HomeScreen()
                      }
 
             }

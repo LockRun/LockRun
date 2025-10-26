@@ -8,7 +8,15 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.LockRunApp">
+        <activity
+            android:name=".presentation.screen.HomeScreen"
+            android:exported="false"
+            android:label="@string/title_activity_home_screen"
+            android:theme="@style/Theme.LockRunApp" />
 
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyAx0drsmP6oertVrTGb1gkeYd5x0OqZUwE" />
     </application>
 
 </manifest>
