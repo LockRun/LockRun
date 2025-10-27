@@ -4,12 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.tteoli.core"
+    namespace = "com.tteoli.ui_components"
 
 }
 
 dependencies {
-    api(project(":ui-components"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

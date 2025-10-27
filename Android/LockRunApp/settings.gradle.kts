@@ -24,3 +24,4 @@ rootProject.name = "LockRunApp"
 include(":app")
 include(":core")
 include(":features:home")
+include(":ui-components")
