@@ -44,6 +44,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
@@ -53,11 +54,13 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.tteoli.home.R
 import com.tteoli.home.ui.theme.LockRunAppTheme
 
-
-
 @Composable
 fun HomeScreen() {
+
     LockRunAppTheme {
+
+        // 구글맵에대한 정보
+        // todo 사용자 위치를 받아오는거 구현하면 변경
         val target = LatLng(35.3350072, 129.0371689)
         val cameraPositionState = rememberCameraPositionState {
             position = CameraPosition.fromLatLngZoom(target, 15.5f)
@@ -69,64 +72,91 @@ fun HomeScreen() {
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState,
-                properties = MapProperties(
-                    mapType = MapType.NORMAL,           // 스타일 적용은 NORMAL에서만 보장
-                    isBuildingEnabled = true,           // 필요 시 false로 비교 테스트
-                    isIndoorEnabled = true,             // 필요 시 false로 비교 테스트
-                    mapStyleOptions = mapStyleOptions
-                )
-            ) {
 
-            }
+            // 구글 맵
+            MapView(cameraPositionState, mapStyleOptions)
 
-            // === 가운데 투명 + 외곽 어둡게 비네트 오버레이 ===
-            RadialGradientOverlay(
-                modifier = Modifier.fillMaxSize(),
-                innerTransparentFraction = 0.40f,      // 0.0~1.0: 중앙 투명반경 (값 ↑ = 투명영역 확대)
-                fadeRadiusFraction = 0.8f,             // 0.0~1.0: 그라데이션이 닿는 전체 반경
-                edgeColor = Color(0xFF16192B),         // 외곽 어두운 색 (다크 블루/네이비 톤)
-                globalAlpha = 9.0f                    // 전체 알파(불투명도). 0.0~1.0
-            )
+            // 그라데이션으로 구글맵 주변 어둡게 설정되는 뷰
+            RadialGradientOverlay()
 
-
-            Column (modifier = Modifier
-                .fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
-                ){
-                Spacer(Modifier.size(60.dp))
-                Text("LockRun",
-                    style = TextStyle(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xFFb9e2ff), // 위쪽 – 연한 하늘색
-                                Color(0xFFc7bfff)  // 아래쪽 – 보랏빛 파스텔 톤
-                            )
-                        ),
-                        fontSize = 42.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-
-                )
-
-                Spacer(Modifier.size(25.dp))
-
-                WeatherPill()
-                Spacer(modifier = Modifier.weight(1f))
-                RunPill()
-                Spacer(Modifier.size(24.dp))
-                RunBtn()
-
-                Spacer(Modifier.size(80.dp))
-            }
+            // 주요 내용을 보여주는 뷰
+            ContentView()
         }
     }
 }
 
+// 구글맵 뷰
+@Composable
+fun MapView(
+    cameraPositionState: CameraPositionState,
+    mapStyleOptions: MapStyleOptions,
+) {
+    GoogleMap(
+        modifier = Modifier.fillMaxSize(),
+        cameraPositionState = cameraPositionState,
+        properties = MapProperties(
+            mapType = MapType.NORMAL,           // 스타일 적용은 NORMAL에서만 보장
+            isBuildingEnabled = true,           // 필요 시 false로 비교 테스트
+            isIndoorEnabled = true,             // 필요 시 false로 비교 테스트
+            mapStyleOptions = mapStyleOptions
+        )
+    )
+}
 
+// 주요 내용을 보여주는 뷰
+/**
+ * 로고, 날씨정보, 뛴 정보, 시작버튼 순으로 정리 되어있음
+ */
+@Composable
+fun ContentView() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.size(60.dp))
+        Text(
+            "LockRun",
+            style = TextStyle(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFb9e2ff), // 위쪽 – 연한 하늘색
+                        Color(0xFFc7bfff)  // 아래쪽 – 보랏빛 파스텔 톤
+                    )
+                ),
+                fontSize = 42.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            )
+
+        )
+
+        Spacer(Modifier.size(25.dp))
+
+        // 날씨정보
+        WeatherPill()
+
+        // 밑에 뷰들을 아래로 붙이기 위한 공간
+        Spacer(modifier = Modifier.weight(1f))
+
+        // 오늘 뛴 정보
+        RunPill()
+        Spacer(Modifier.size(24.dp))
+
+        // 시작 버튼
+        RunBtn()
+        Spacer(Modifier.size(80.dp))
+    }
+}
+
+
+// 커스텀 카드뷰
+/**
+ * corner 인자를 사용해서 카드뷰 모서리를 라운드 줄 수 있고 기본값으로 28.dp .
+ * - {} 안에 뷰를 차가 할수 있고 기본적으로 가로 정렬이 된다.
+ * - 배경 색상은 (Color.White.copy(alpha = 0.12f))이고 흰색에서 투명도 12%준 거임
+ * - 외과 여백은 세로 18.dp, 가로 14.dp
+ */
 @Composable
 private fun GlassCard(
     modifier: Modifier = Modifier,
@@ -148,6 +178,7 @@ private fun GlassCard(
     }
 }
 
+// 오늘 띈 정보를 보여주는 뷰
 @Composable
 private fun RunPill(){
     GlassCard(
@@ -185,6 +216,7 @@ private fun RunPill(){
     }
 }
 
+// 시작 버튼
 @Composable
 private fun RunBtn(){
     GlassCard(
@@ -199,6 +231,7 @@ private fun RunBtn(){
     }
 }
 
+// 날씨 보여주는 뷰
 @Composable
 private fun WeatherPill(
     tempText: String = "30°C",
@@ -235,7 +268,7 @@ private fun WeatherPill(
 }
 
 
-
+// 그라데이션으로 구글맵 주변 어둡게 설정되는 뷰
 /**
  * 중심은 완전 투명, 외곽으로 갈수록 어두워지는 원형 그라데이션 오버레이.
  * - innerTransparentFraction: 중심부 완전 투명 영역의 비율
@@ -245,11 +278,11 @@ private fun WeatherPill(
  */
 @Composable
 private fun RadialGradientOverlay(
-    modifier: Modifier = Modifier,
-    innerTransparentFraction: Float = 0.0f,
-    fadeRadiusFraction: Float = 0.6f,
-    edgeColor: Color = Color(0xFF0A0F23),
-    globalAlpha: Float = 1.0f
+    modifier: Modifier = Modifier.fillMaxSize(),
+    innerTransparentFraction: Float =0.40f,
+    fadeRadiusFraction: Float = 0.8f,
+    edgeColor: Color = Color(0xFF16192B),
+    globalAlpha: Float = 9.0f
 ) {
     Canvas(modifier = modifier) {
         // 반경 계산 (화면의 짧은 변을 기준으로 안정적 동작)
