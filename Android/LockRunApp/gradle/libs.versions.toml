@@ -22,6 +22,11 @@ mapsCompose = "4.4.1"
 # hilt
 hilt = "2.57.1"
 ksp = "2.0.21-1.0.25"
+hiltNavigationCompose = "1.2.0"
+playServicesLocation = "21.3.0"
+
+# 코루틴
+coroutines = "1.8.1"
 
 
 [libraries]
@@ -54,6 +59,13 @@ google-maps-compose = { group = "com.google.maps.android", name = "maps-compose"
 # hilt
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+
+# 코루틴
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

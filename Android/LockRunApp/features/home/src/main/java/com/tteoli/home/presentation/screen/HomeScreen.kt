@@ -1,5 +1,9 @@
 package com.tteoli.home.presentation.screen
 
+import android.Manifest
+import android.content.pm.PackageManager.PERMISSION_GRANTED
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,6 +31,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.airbnb.lottie.compose.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -34,6 +40,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.maps.android.compose.*
 import com.tteoli.home.R
+import com.tteoli.home.presentation.viewmodel.HomeViewmodel
 import com.tteoli.home.ui.theme.LockRunAppTheme
 import com.tteoli.ui_components.PrimaryButton
 
@@ -41,7 +48,6 @@ import com.tteoli.ui_components.PrimaryButton
    Constants / Types
    ================================ */
 
-private val TARGET_LATLNG = LatLng(35.3350072, 129.0371689)
 private const val ZOOM_IDLE = 16f
 private const val ZOOM_FOCUS = 16.5f
 private const val ANIM_MS_SHORT = 800
@@ -56,21 +62,40 @@ private enum class RunState { Idle, Countdown, Running, Paused,ReCountdown }
    ================================ */
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    viewModel: HomeViewmodel = hiltViewModel()
+) {
     LockRunAppTheme {
+
+        // ----- 상태 수집 -----
+        val currentLocation by viewModel.currentLocation.collectAsState()
+        val target = currentLocation ?: LatLng(35.3350072, 129.0371689)
+
         var state by remember { mutableStateOf(RunState.Idle) }
+
+        // ----- 지도 관련 상태 -----
         val mapStyle = rememberMapStyle(R.raw.map_dark_style)
         val uiSettings = rememberMapUiSettings()
         val cameraPositionState = rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(TARGET_LATLNG, ZOOM_IDLE)
+            position = CameraPosition.fromLatLngZoom(target, ZOOM_IDLE)
+        }
+
+        // ----- 위치 권한 요청 + 현재 위치 로딩 -----
+        LocationPermissionRequester(
+            onGranted = { viewModel.loadCurrentLocation() }
+        )
+
+        // 화면 처음 진입 시 현재 위치 요청
+        LaunchedEffect(Unit) {
+            viewModel.loadCurrentLocation()
         }
 
         // 카메라 줌 애니메이션
-        LaunchedEffect(state) {
+        LaunchedEffect(state,currentLocation) {
             val zoom = if (state == RunState.Running) ZOOM_FOCUS else ZOOM_IDLE
             cameraPositionState.animate(
                 update = CameraUpdateFactory.newCameraPosition(
-                    CameraPosition(TARGET_LATLNG, zoom, 0f, 0f)
+                    CameraPosition(target, zoom, 0f, 0f)
                 ),
                 durationMs = ANIM_MS_NORMAL
             )
@@ -119,6 +144,48 @@ fun HomeScreen() {
                 )
             }
 
+        }
+    }
+}
+
+/* ================================
+   Permission
+   ================================ */
+@Composable
+private fun LocationPermissionRequester(
+    onGranted: () -> Unit
+) {
+    val context = LocalContext.current
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fine = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarse = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+
+        if (fine || coarse) onGranted()
+    }
+
+    LaunchedEffect(Unit) {
+        val fineGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PERMISSION_GRANTED
+
+        val coarseGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PERMISSION_GRANTED
+
+        if (fineGranted || coarseGranted) {
+            onGranted()
+        } else {
+            launcher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
         }
     }
 }
