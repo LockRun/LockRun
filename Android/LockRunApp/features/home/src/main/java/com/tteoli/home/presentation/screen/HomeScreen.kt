@@ -41,8 +41,8 @@ import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.maps.android.compose.*
 import com.tteoli.home.R
 import com.tteoli.home.presentation.viewmodel.HomeViewmodel
-import com.tteoli.home.ui.theme.LockRunAppTheme
 import com.tteoli.ui_components.PrimaryButton
+import com.tteoli.ui_components.theme.LockRunAppTheme
 
 /* ================================
    Constants / Types

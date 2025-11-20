@@ -23,7 +23,7 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.tteoli.home.presentation.screen.HomeScreen
-import com.tteoli.home.ui.theme.LockRunAppTheme
+import com.tteoli.ui_components.theme.LockRunAppTheme
 
 class HomeFragment: Fragment() {
     override fun onCreateView(
