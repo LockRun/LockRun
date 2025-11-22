@@ -55,7 +55,7 @@ private const val ANIM_MS_NORMAL = 1000
 
 private val TitleGradient = listOf(Color(0xFFb9e2ff), Color(0xFFc7bfff))
 
-private enum class RunState { Idle, Countdown, Running, Paused,ReCountdown }
+private enum class RunState { Idle, Countdown, Running, Paused, ReCountdown }
 
 /* ================================
    Entry
@@ -63,8 +63,10 @@ private enum class RunState { Idle, Countdown, Running, Paused,ReCountdown }
 
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewmodel = hiltViewModel()
+    viewModel: HomeViewmodel = hiltViewModel(),
 ) {
+
+    val timer by viewModel.timer.collectAsState()
     LockRunAppTheme {
 
         // ----- 상태 수집 -----
@@ -91,7 +93,7 @@ fun HomeScreen(
         }
 
         // 카메라 줌 애니메이션
-        LaunchedEffect(state,currentLocation) {
+        LaunchedEffect(state, currentLocation) {
             val zoom = if (state == RunState.Running) ZOOM_FOCUS else ZOOM_IDLE
             cameraPositionState.animate(
                 update = CameraUpdateFactory.newCameraPosition(
@@ -106,7 +108,11 @@ fun HomeScreen(
 
         Box(Modifier.fillMaxSize()) {
             // 1) 지도
-            MapView(uiSettings = uiSettings, cameraPositionState = cameraPositionState, mapStyleOptions = mapStyle)
+            MapView(
+                uiSettings = uiSettings,
+                cameraPositionState = cameraPositionState,
+                mapStyleOptions = mapStyle
+            )
 
             // 2) 주변 어둡게
             RadialGradientOverlay(
@@ -120,27 +126,42 @@ fun HomeScreen(
                 RunState.Idle -> IdleContent(
                     onStart = { state = RunState.Countdown }
                 )
+
                 RunState.Running -> RunningContent(
-                    onPause = { state = RunState.Paused }
+                    timer,
+                    onPause = {
+                        viewModel.pauseTimer()
+                        state = RunState.Paused
+                    }
                 )
+
                 RunState.Paused -> PausedContent(
+                    timer,
                     onResume = { state = RunState.ReCountdown },
                     onStop = { state = RunState.Idle }
                 )
+
                 RunState.Countdown -> IdleContent(
                     onStart = { state = RunState.Countdown }
                 )
+
                 RunState.ReCountdown -> PausedContent(
+                    timer,
                     onResume = { state = RunState.ReCountdown },
-                    onStop = { state = RunState.Idle }
+                    onStop = {
+                        state = RunState.Idle
+                    }
                 )
             }
 
             // 4) 카운트다운
-            if (state == RunState.Countdown|| state == RunState.ReCountdown) {
+            if (state == RunState.Countdown || state == RunState.ReCountdown) {
                 CountdownOverlay(
                     rawRes = R.raw.animation_count,
-                    onFinished = { state = RunState.Running }
+                    onFinished = {
+                        state = RunState.Running
+                        viewModel.startTimer()
+                    }
                 )
             }
 
@@ -153,7 +174,7 @@ fun HomeScreen(
    ================================ */
 @Composable
 private fun LocationPermissionRequester(
-    onGranted: () -> Unit
+    onGranted: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -276,7 +297,11 @@ private fun IdleContent(onStart: () -> Unit) {
         WeatherPill()
         Spacer(Modifier.weight(1f))
         // 러닝 정보
-        RunSummaryCard(distanceText = "0.0Km/5.0Km", rainText = "0%", goalTimeText = "20:00 ~ 22:00")
+        RunSummaryCard(
+            distanceText = "0.0Km/5.0Km",
+            rainText = "0%",
+            goalTimeText = "20:00 ~ 22:00"
+        )
         Spacer(Modifier.size(24.dp))
         // 시작 버튼
         StartButton(onStart)
@@ -286,10 +311,11 @@ private fun IdleContent(onStart: () -> Unit) {
 
 // 러닝 중 화면
 @Composable
-private fun RunningContent(onPause: () -> Unit) {
+private fun RunningContent(timeText: String, onPause: () -> Unit) {
+
     TimerScaffold(
         stateText = "Running",
-        timeText = "01:59:58",
+        timeText = timeText,
         backgroundAlpha = 0.5f,
         bottomContent = {
             RunProgress(progress = 0.6f, left = "0.8Km", right = "2Km")
@@ -301,17 +327,19 @@ private fun RunningContent(onPause: () -> Unit) {
 
 // 일시정지 화면
 @Composable
-private fun PausedContent(onResume: () -> Unit, onStop: () -> Unit) {
+private fun PausedContent(timeText: String, onResume: () -> Unit, onStop: () -> Unit) {
     TimerScaffold(
         stateText = "Resting",
-        timeText = "01:59:58",
+        timeText = timeText,
         backgroundAlpha = 0.7f,
 
         bottomContent = {
             RunProgress(progress = 0.6f, left = "0.8Km", right = "2Km")
             Spacer(Modifier.size(24.dp))
             PrimaryButton(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 40.dp),
                 text = "계속 달리기"
             ) { onResume() }
 
@@ -326,34 +354,63 @@ private fun PausedContent(onResume: () -> Unit, onStop: () -> Unit) {
             }
         }, infoContent = {
             Row(horizontalArrangement = Arrangement.Center) {
-                Column (horizontalAlignment = Alignment.CenterHorizontally){
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
 
-                    Image(painter = painterResource(id = R.drawable.ic_heart), contentDescription = null, modifier = Modifier.size(30.dp))
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_heart),
+                        contentDescription = null,
+                        modifier = Modifier.size(30.dp)
+                    )
                     Spacer(Modifier.size(4.dp))
-                    Row (verticalAlignment = Alignment.Bottom){
-                        Text("128",fontSize = 30.sp,color = Color.White, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            "128",
+                            fontSize = 30.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
                         Spacer(Modifier.size(4.dp))
-                        Text("bpm" , fontSize = 18.sp, color = Color(0xFFCCCECF))
+                        Text("bpm", fontSize = 18.sp, color = Color(0xFFCCCECF))
                     }
                 }
                 Spacer(Modifier.size(24.dp))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Image(painter = painterResource(id = R.drawable.ic_running),colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color(0xFF31D158)) , contentDescription = null, modifier = Modifier.size(30.dp))
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_running),
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color(0xFF31D158)),
+                        contentDescription = null,
+                        modifier = Modifier.size(30.dp)
+                    )
                     Spacer(Modifier.size(4.dp))
-                    Row (verticalAlignment = Alignment.Bottom){
-                        Text("5'32'",fontSize = 30.sp,color = Color.White, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            "5'32'",
+                            fontSize = 30.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
                         Spacer(Modifier.size(4.dp))
-                        Text("/km" , fontSize = 18.sp, color = Color(0xFFCCCECF))
+                        Text("/km", fontSize = 18.sp, color = Color(0xFFCCCECF))
                     }
                 }
                 Spacer(Modifier.size(24.dp))
-                Column (horizontalAlignment = Alignment.CenterHorizontally){
-                    Image(painter = painterResource(id = R.drawable.ic_location),colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color(0xFFFED702)) , contentDescription = null, modifier = Modifier.size(30.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_location),
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color(0xFFFED702)),
+                        contentDescription = null,
+                        modifier = Modifier.size(30.dp)
+                    )
                     Spacer(Modifier.size(4.dp))
-                    Row (verticalAlignment = Alignment.Bottom){
-                        Text("0.00",fontSize = 30.sp,color = Color.White, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            "0.00",
+                            fontSize = 30.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
                         Spacer(Modifier.size(4.dp))
-                        Text("km" , fontSize = 18.sp, color = Color(0xFFCCCECF))
+                        Text("km", fontSize = 18.sp, color = Color(0xFFCCCECF))
                     }
                 }
 
@@ -384,11 +441,20 @@ private fun TimerScaffold(
     ) {
         Spacer(Modifier.size(60.dp))
         GlassCardDark {
-            Image(painter = painterResource(id = R.drawable.ic_running), contentDescription = null, modifier = Modifier.size(20.dp))
+            Image(
+                painter = painterResource(id = R.drawable.ic_running),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
             Spacer(Modifier.size(8.dp))
             Text(
                 stateText,
-                style = TextStyle(color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                style = TextStyle(
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
             )
             Spacer(Modifier.size(8.dp))
 
@@ -427,7 +493,7 @@ private fun GlassCard(
     modifier: Modifier = Modifier,
     corner: Dp = 28.dp,
     color: Color = Color(0xFFD9D9D9).copy(alpha = 0.05f),
-    content: @Composable RowScope.() -> Unit
+    content: @Composable RowScope.() -> Unit,
 ) {
     Box(
         modifier = modifier
@@ -446,7 +512,7 @@ private fun GlassCard(
 private fun GlassCardDark(
     modifier: Modifier = Modifier,
     corner: Dp = 28.dp,
-    content: @Composable RowScope.() -> Unit
+    content: @Composable RowScope.() -> Unit,
 ) = GlassCard(modifier, corner, Color(0xFF000000).copy(alpha = 0.60f), content)
 
 @Composable
@@ -493,19 +559,29 @@ private fun PauseButton(onPause: () -> Unit) {
 private fun RunSummaryCard(
     distanceText: String,
     rainText: String,
-    goalTimeText: String
+    goalTimeText: String,
 ) {
     GlassCard(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
         corner = 22.dp
     ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(painter = painterResource(id = R.drawable.ic_ruler), contentDescription = null, modifier = Modifier.size(18.dp))
+                Image(
+                    painter = painterResource(id = R.drawable.ic_ruler),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
                 Spacer(Modifier.width(6.dp))
                 Text(distanceText, color = Color.White, fontSize = 14.sp)
                 Spacer(Modifier.weight(1f))
-                Image(painter = painterResource(id = R.drawable.ic_progress), contentDescription = null, modifier = Modifier.size(18.dp))
+                Image(
+                    painter = painterResource(id = R.drawable.ic_progress),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
                 Spacer(Modifier.width(6.dp))
                 Text(rainText, color = Color.White, fontSize = 14.sp)
             }
@@ -522,7 +598,9 @@ private fun RunSummaryCard(
 @Composable
 private fun RunProgress(progress: Float, left: String, right: String) {
     GlassCardDark(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
         corner = 22.dp
     ) {
         Column {
@@ -542,7 +620,9 @@ private fun RunProgress(progress: Float, left: String, right: String) {
 private fun LinearDeterminate(progress: Float) {
     androidx.compose.material3.LinearProgressIndicator(
         progress = { progress.coerceIn(0f, 1f) },
-        modifier = Modifier.fillMaxWidth().height(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(8.dp),
         color = Color(0xFFCDE4FB),
         trackColor = Color(0x33ffffff),
         gapSize = 0.dp
@@ -553,7 +633,7 @@ private fun LinearDeterminate(progress: Float) {
 private fun WeatherPill(
     tempText: String = "30°C",
     rainProb: String = "30%",
-    location: String = "서울"
+    location: String = "서울",
 ) {
     GlassCard(modifier = Modifier.wrapContentSize(), corner = 22.dp) {
         WeatherIconText(R.drawable.ic_temperature, tempText)
@@ -566,11 +646,14 @@ private fun WeatherPill(
 
 @Composable
 private fun WeatherIconText(iconRes: Int, text: String) {
-    Image(painter = painterResource(id = iconRes), contentDescription = null, modifier = Modifier.size(24.dp))
+    Image(
+        painter = painterResource(id = iconRes),
+        contentDescription = null,
+        modifier = Modifier.size(24.dp)
+    )
     Spacer(Modifier.width(6.dp))
     Text(text, color = Color.White, fontSize = 14.sp)
 }
-
 
 
 /* ================================
@@ -596,14 +679,21 @@ private fun CountdownOverlay(rawRes: Int, onFinished: () -> Unit) {
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)).clickable{
-            onFinished()
-        },
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.6f))
+            .clickable {
+                onFinished()
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        LottieAnimation(composition = composition, progress = { progress }, modifier = Modifier.size(180.dp))
-        Text("터치하면 바로 시작됩니다." , color = Color.White)
+        LottieAnimation(
+            composition = composition,
+            progress = { progress },
+            modifier = Modifier.size(180.dp)
+        )
+        Text("터치하면 바로 시작됩니다.", color = Color.White)
     }
 }
 
@@ -613,7 +703,7 @@ private fun RadialGradientOverlay(
     innerTransparentFraction: Float = 0.40f,
     fadeRadiusFraction: Float = 0.8f,
     edgeColor: Color = Color(0xFF16192B),
-    globalAlpha: Float = 9.0f
+    globalAlpha: Float = 9.0f,
 ) {
     Canvas(modifier = modifier) {
         val minDim = size.minDimension
