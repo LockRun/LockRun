@@ -40,6 +40,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.maps.android.compose.*
 import com.tteoli.home.R
+import com.tteoli.home.presentation.entity.TrackPoint
 import com.tteoli.home.presentation.viewmodel.HomeViewmodel
 import com.tteoli.ui_components.PrimaryButton
 import com.tteoli.ui_components.theme.LockRunAppTheme
@@ -67,6 +68,7 @@ fun HomeScreen(
 ) {
 
     val timer by viewModel.timer.collectAsState()
+    val points by viewModel.points.collectAsState()
     LockRunAppTheme {
 
         // ----- 상태 수집 -----
@@ -117,7 +119,8 @@ fun HomeScreen(
                 uiSettings = uiSettings,
                 cameraPositionState = cameraPositionState,
                 mapStyleOptions = mapStyle,
-                isMyLocationEnabled = myLocationEnabled && state != RunState.Idle
+                isMyLocationEnabled = myLocationEnabled && state != RunState.Idle,
+                points = points
             )
 
             // 2) 주변 어둡게
@@ -217,6 +220,15 @@ private fun LocationPermissionRequester(
     }
 }
 
+fun speedToColor(speedMps: Float): Color {
+    // 대충 기준 예시: <2m/s, <4m/s, 그 이상
+    return when {
+        speedMps < 5f -> Color(0xFF2196F3) // Blue
+        speedMps < 20f -> Color(0xFF4CAF50) // Green
+        else -> Color(0xFFF44336) // Red
+    }
+}
+
 /* ================================
    Remember Helpers
    ================================ */
@@ -266,10 +278,12 @@ private fun rememberOverlayAnimation(state: RunState): OverlayAnim {
 
 @Composable
 private fun MapView(
+
     uiSettings: MapUiSettings,
     cameraPositionState: CameraPositionState,
     mapStyleOptions: MapStyleOptions,
-    isMyLocationEnabled: Boolean
+    isMyLocationEnabled: Boolean,
+    points : List<TrackPoint>,
 ) {
 
     GoogleMap(
@@ -283,7 +297,19 @@ private fun MapView(
             mapStyleOptions = mapStyleOptions
         ),
         uiSettings = uiSettings
-    )
+    ){
+        points.zipWithNext { a, b ->
+            val color = speedToColor(b.speedMps)
+            Polyline(
+                points = listOf(
+                    LatLng(a.lat, a.lng),
+                    LatLng(b.lat, b.lng)
+                ),
+                color = color,
+                width = 12f
+            )
+        }
+    }
 }
 
 /* ================================
