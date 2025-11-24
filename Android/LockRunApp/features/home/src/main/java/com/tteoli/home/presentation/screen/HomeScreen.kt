@@ -75,6 +75,8 @@ fun HomeScreen(
 
         var state by remember { mutableStateOf(RunState.Idle) }
 
+        var myLocationEnabled by remember { mutableStateOf(false) }
+
         // ----- 지도 관련 상태 -----
         val mapStyle = rememberMapStyle(R.raw.map_dark_style)
         val uiSettings = rememberMapUiSettings()
@@ -84,7 +86,10 @@ fun HomeScreen(
 
         // ----- 위치 권한 요청 + 현재 위치 로딩 -----
         LocationPermissionRequester(
-            onGranted = { viewModel.loadCurrentLocation() }
+            onGranted = {
+                viewModel.loadCurrentLocation()
+                myLocationEnabled = true
+            }
         )
 
         // 화면 처음 진입 시 현재 위치 요청
@@ -111,7 +116,8 @@ fun HomeScreen(
             MapView(
                 uiSettings = uiSettings,
                 cameraPositionState = cameraPositionState,
-                mapStyleOptions = mapStyle
+                mapStyleOptions = mapStyle,
+                isMyLocationEnabled = myLocationEnabled && state != RunState.Idle
             )
 
             // 2) 주변 어둡게
@@ -263,13 +269,16 @@ private fun MapView(
     uiSettings: MapUiSettings,
     cameraPositionState: CameraPositionState,
     mapStyleOptions: MapStyleOptions,
+    isMyLocationEnabled: Boolean
 ) {
+
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
         properties = MapProperties(
             mapType = MapType.NORMAL,
             isBuildingEnabled = true,
+            isMyLocationEnabled = isMyLocationEnabled,
             isIndoorEnabled = true,
             mapStyleOptions = mapStyleOptions
         ),

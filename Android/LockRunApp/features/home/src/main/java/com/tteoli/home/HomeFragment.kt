@@ -24,7 +24,9 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.tteoli.home.presentation.screen.HomeScreen
 import com.tteoli.ui_components.theme.LockRunAppTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class HomeFragment: Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,
