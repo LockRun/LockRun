@@ -61,6 +61,7 @@ fun PrimaryButton(
             .clickable(
 
             ) { onClick() }
+
             .padding(vertical = 14.dp, horizontal = 40.dp),
         contentAlignment = Alignment.Center
 

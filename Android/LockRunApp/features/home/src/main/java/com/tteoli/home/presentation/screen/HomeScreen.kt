@@ -2,12 +2,15 @@ package com.tteoli.home.presentation.screen
 
 import android.Manifest
 import android.content.pm.PackageManager.PERMISSION_GRANTED
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.CircleShape
@@ -22,6 +25,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -44,6 +48,11 @@ import com.tteoli.home.presentation.entity.TrackPoint
 import com.tteoli.home.presentation.viewmodel.HomeViewmodel
 import com.tteoli.ui_components.PrimaryButton
 import com.tteoli.ui_components.theme.LockRunAppTheme
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 /* ================================
    Constants / Types
@@ -53,6 +62,9 @@ private const val ZOOM_IDLE = 16f
 private const val ZOOM_FOCUS = 16.5f
 private const val ANIM_MS_SHORT = 800
 private const val ANIM_MS_NORMAL = 1000
+
+
+
 
 private val TitleGradient = listOf(Color(0xFFb9e2ff), Color(0xFFc7bfff))
 
@@ -69,23 +81,22 @@ fun HomeScreen(
 
     val timer by viewModel.timer.collectAsState()
     val points by viewModel.points.collectAsState()
+    val currentLocation by viewModel.currentLocation.collectAsState()
+    // ----- 상태 수집 -----
+
+    val target = currentLocation ?: LatLng(35.3350072, 129.0371689)
+
+    var state by remember { mutableStateOf(RunState.Idle) }
+
+    var myLocationEnabled by remember { mutableStateOf(false) }
+
+    // ----- 지도 관련 상태 -----
+    val mapStyle = rememberMapStyle(R.raw.map_dark_style)
+    val uiSettings = rememberMapUiSettings()
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(target, ZOOM_IDLE)
+    }
     LockRunAppTheme {
-
-        // ----- 상태 수집 -----
-        val currentLocation by viewModel.currentLocation.collectAsState()
-        val target = currentLocation ?: LatLng(35.3350072, 129.0371689)
-
-        var state by remember { mutableStateOf(RunState.Idle) }
-
-        var myLocationEnabled by remember { mutableStateOf(false) }
-
-        // ----- 지도 관련 상태 -----
-        val mapStyle = rememberMapStyle(R.raw.map_dark_style)
-        val uiSettings = rememberMapUiSettings()
-        val cameraPositionState = rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(target, ZOOM_IDLE)
-        }
-
         // ----- 위치 권한 요청 + 현재 위치 로딩 -----
         LocationPermissionRequester(
             onGranted = {
@@ -223,8 +234,8 @@ private fun LocationPermissionRequester(
 fun speedToColor(speedMps: Float): Color {
     // 대충 기준 예시: <2m/s, <4m/s, 그 이상
     return when {
-        speedMps < 5f -> Color(0xFF2196F3) // Blue
-        speedMps < 20f -> Color(0xFF4CAF50) // Green
+        speedMps < 2f -> Color(0xFF2196F3) // Blue
+        speedMps < 4f -> Color(0xFF4CAF50) // Green
         else -> Color(0xFFF44336) // Red
     }
 }
@@ -363,6 +374,8 @@ private fun RunningContent(timeText: String, onPause: () -> Unit) {
 // 일시정지 화면
 @Composable
 private fun PausedContent(timeText: String, onResume: () -> Unit, onStop: () -> Unit) {
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     TimerScaffold(
         stateText = "Resting",
         timeText = timeText,
@@ -382,7 +395,42 @@ private fun PausedContent(timeText: String, onResume: () -> Unit, onStop: () -> 
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 40.dp, vertical = 12.dp)
-                    .clickable { onStop() },
+                    .pointerInput(Unit) {
+                        coroutineScope {   // launch 사용 가능하게
+                            detectTapGestures(
+                                onTap = {
+                                    Toast.makeText(context, "러닝을 끝내려면 2초간 눌러주세요.", Toast.LENGTH_SHORT).show()
+                                },
+                                onPress = {
+                                    var isLong = false
+
+                                    // 2초 후 long press 인정
+                                    val pressJob = launch {
+                                        delay(2000)
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        isLong = true
+                                        onStop()   // ✅ 2초 유지했을 때만 실행
+                                    }
+
+                                    val success = tryAwaitRelease()
+
+                                    // 2초 전에 손을 뗀 경우 or 제스처가 취소된 경우 -> 취소
+                                    if (!isLong || !success) {
+                                        pressJob.cancel()
+                                    }
+                                }
+                            )
+                        }
+                    },
+
+//                    .combinedClickable(
+//
+//                        onClick = {Toast.makeText(context, "hi", Toast.LENGTH_SHORT).show()},
+//                        onLongClick = {
+//                            onStop()
+//                        }
+//                    ),
+
                 contentAlignment = Alignment.Center
             ) {
                 Text("여기까지 달리고 싶어요", color = Color(0xFF9B9B9B))
@@ -474,12 +522,12 @@ private fun TimerScaffold(
             .background(Color.Black.copy(alpha = backgroundAlpha)),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.size(60.dp))
-        GlassCardDark {
+        Spacer(Modifier.size(20.dp))
+        GlassCardDark(paddingH = 12.dp, paddingV = 8.dp) {
             Image(
                 painter = painterResource(id = R.drawable.ic_running),
                 contentDescription = null,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(16.dp)
             )
             Spacer(Modifier.size(8.dp))
             Text(
@@ -528,7 +576,9 @@ private fun GlassCard(
     modifier: Modifier = Modifier,
     corner: Dp = 28.dp,
     color: Color = Color(0xFFD9D9D9).copy(alpha = 0.05f),
-    content: @Composable RowScope.() -> Unit,
+    paddingH: Dp = 18.dp,
+    paddingV: Dp = 14.dp,
+    content: @Composable RowScope.() -> Unit
 ) {
     Box(
         modifier = modifier
@@ -536,7 +586,7 @@ private fun GlassCard(
             .background(color)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+            modifier = Modifier.padding(horizontal = paddingH, vertical = paddingV),
             verticalAlignment = Alignment.CenterVertically,
             content = content
         )
@@ -547,8 +597,11 @@ private fun GlassCard(
 private fun GlassCardDark(
     modifier: Modifier = Modifier,
     corner: Dp = 28.dp,
+    paddingH: Dp = 18.dp,
+    paddingV: Dp = 14.dp,
     content: @Composable RowScope.() -> Unit,
-) = GlassCard(modifier, corner, Color(0xFF000000).copy(alpha = 0.60f), content)
+
+) = GlassCard(modifier, corner, Color(0xFF000000).copy(alpha = 0.60f), content= content,paddingH= paddingH, paddingV= paddingV)
 
 @Composable
 private fun StartButton(onStart: () -> Unit) {
@@ -562,7 +615,7 @@ private fun StartButton(onStart: () -> Unit) {
         Image(
             painter = painterResource(id = R.drawable.ic_shoe),
             contentDescription = "러닝 시작",
-            modifier = Modifier.size(76.dp),
+            modifier = Modifier.size(60.dp),
             contentScale = ContentScale.Fit
         )
     }
@@ -580,7 +633,7 @@ private fun PauseButton(onPause: () -> Unit) {
         Image(
             painter = painterResource(id = R.drawable.ic_bottle),
             contentDescription = "일시정지",
-            modifier = Modifier.size(76.dp),
+            modifier = Modifier.size(60.dp),
             contentScale = ContentScale.Fit
         )
     }
