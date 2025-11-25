@@ -81,7 +81,9 @@ fun HomeScreen(
 
     val timer by viewModel.timer.collectAsState()
     val points by viewModel.points.collectAsState()
+
     val currentLocation by viewModel.currentLocation.collectAsState()
+    val totalDistance by viewModel.totalDistance.collectAsState()
     // ----- 상태 수집 -----
 
     val target = currentLocation ?: LatLng(35.3350072, 129.0371689)
@@ -149,6 +151,8 @@ fun HomeScreen(
 
                 RunState.Running -> RunningContent(
                     timer,
+                    distance = totalDistance,
+                    target= 5f,
                     onPause = {
                         viewModel.pauseTimer()
                         state = RunState.Paused
@@ -157,6 +161,8 @@ fun HomeScreen(
 
                 RunState.Paused -> PausedContent(
                     timer,
+                    distance = totalDistance,
+                    target= 5f,
                     onResume = { state = RunState.ReCountdown },
                     onStop = { state = RunState.Idle }
                 )
@@ -167,6 +173,8 @@ fun HomeScreen(
 
                 RunState.ReCountdown -> PausedContent(
                     timer,
+                    distance = totalDistance,
+                    target= 5f,
                     onResume = { state = RunState.ReCountdown },
                     onStop = {
                         state = RunState.Idle
@@ -357,14 +365,14 @@ private fun IdleContent(onStart: () -> Unit) {
 
 // 러닝 중 화면
 @Composable
-private fun RunningContent(timeText: String, onPause: () -> Unit) {
+private fun RunningContent(timeText: String, distance: Float, target: Float, onPause: () -> Unit) {
 
     TimerScaffold(
         stateText = "Running",
         timeText = timeText,
         backgroundAlpha = 0.5f,
         bottomContent = {
-            RunProgress(progress = 0.6f, left = "0.8Km", right = "2Km")
+            RunProgress(progress = distance/target/1000, left = "%.2f km".format(distance/1000), right = "${target}Km")
             Spacer(Modifier.size(24.dp))
             PauseButton(onPause)
         }, infoContent = {}
@@ -373,7 +381,7 @@ private fun RunningContent(timeText: String, onPause: () -> Unit) {
 
 // 일시정지 화면
 @Composable
-private fun PausedContent(timeText: String, onResume: () -> Unit, onStop: () -> Unit) {
+private fun PausedContent(timeText: String,distance: Float, target: Float, onResume: () -> Unit, onStop: () -> Unit) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     TimerScaffold(
@@ -382,7 +390,7 @@ private fun PausedContent(timeText: String, onResume: () -> Unit, onStop: () -> 
         backgroundAlpha = 0.7f,
 
         bottomContent = {
-            RunProgress(progress = 0.6f, left = "0.8Km", right = "2Km")
+            RunProgress(progress = distance/target/1000, left = "%.2f km".format(distance/1000), right = "${target}Km")
             Spacer(Modifier.size(24.dp))
             PrimaryButton(
                 modifier = Modifier
@@ -487,7 +495,7 @@ private fun PausedContent(timeText: String, onResume: () -> Unit, onStop: () -> 
                     Spacer(Modifier.size(4.dp))
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
-                            "0.00",
+                            "%.2f".format(distance/1000),
                             fontSize = 30.sp,
                             color = Color.White,
                             fontWeight = FontWeight.Bold

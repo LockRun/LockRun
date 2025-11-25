@@ -23,10 +23,13 @@ private const val TAG = "HomeViewmodel"
 class HomeViewmodel @Inject constructor(
     private val locationRepository: LocationRepository
 ): ViewModel() {
-
+    private var job: Job? = null
     private val _elapsedSec = MutableStateFlow(0L)
     val elapsedSec: StateFlow<Long> = _elapsedSec
-    private var job: Job? = null
+
+    private val _totalDistance = MutableStateFlow(0.0f)
+    val totalDistance: StateFlow<Float> = _totalDistance
+
 
     private val _timer = MutableStateFlow("00:00:00")
     val timer: StateFlow<String> = _timer
@@ -64,6 +67,8 @@ class HomeViewmodel @Inject constructor(
         )
 
         _points.value = _points.value + newPoint
+        _totalDistance.value = totalDistanceMeters()
+        Log.d(TAG, "onLocationUpdate: ${totalDistance.value}")
     }
 
     fun totalDistanceMeters(): Float {
