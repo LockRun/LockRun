@@ -53,6 +53,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import com.google.android.gms.maps.model.RoundCap
 
 /* ================================
    Constants / Types
@@ -325,7 +326,9 @@ private fun MapView(
                     LatLng(b.lat, b.lng)
                 ),
                 color = color,
-                width = 12f
+                width = 12f,
+                startCap = RoundCap(),
+                endCap = RoundCap()
             )
         }
     }
