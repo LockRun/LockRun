@@ -533,7 +533,7 @@ private fun TimerScaffold(
             .background(Color.Black.copy(alpha = backgroundAlpha)),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.size(20.dp))
+        Spacer(Modifier.size(60.dp))
         GlassCardDark(paddingH = 12.dp, paddingV = 8.dp) {
             Image(
                 painter = painterResource(id = R.drawable.ic_running),
